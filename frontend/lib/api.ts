@@ -40,6 +40,7 @@ export interface EventItem {
   updated_at: string;
   alert_level: "green" | "yellow" | "orange" | "red";
   alert_level_basis: string[];
+  confidence_breakdown?: Record<string, unknown>;
   status: string;
   locations: Location[];
   sources: SourceRef[];
