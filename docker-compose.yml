@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: airalert
+      POSTGRES_USER: airalert
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set_in_.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airalert"]
+      interval: 10s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    env_file: .env
+    environment:
+      AIRALERT_DATABASE_URL: postgresql+psycopg2://airalert:${POSTGRES_PASSWORD}@db:5432/airalert
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+
+  worker:
+    build: ./backend
+    command: ["python", "-c", "import asyncio; from app.db import make_engine; from app.main import scheduler_loop, make_session_factory; e = make_engine(); asyncio.run(scheduler_loop(make_session_factory(e)))"]
+    env_file: .env
+    environment:
+      AIRALERT_DATABASE_URL: postgresql+psycopg2://airalert:${POSTGRES_PASSWORD}@db:5432/airalert
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:
