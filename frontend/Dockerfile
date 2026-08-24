@@ -1,5 +1,8 @@
 FROM node:20-alpine AS build
 WORKDIR /app
+# Adres API wbudowywany w bundel w czasie buildu (NEXT_PUBLIC_* jest statyczny)
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 COPY package.json ./
 RUN npm install
 COPY . .
